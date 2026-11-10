@@ -9,7 +9,7 @@ comunicados entre sí.
 
 ---
 
-## 1. Lo que hicimos, en pocas palabras
+## 1. Qué hicimos
 
 Montamos dos programas que trabajan juntos, cada uno dentro de su propia caja,
 y conseguimos que se hablen entre ellos.

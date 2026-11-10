@@ -3,30 +3,30 @@
 **Actividad:** usar Docker para construir dos contenedores que estén
 comunicados entre sí.
 
-**Autor:** Sebastián Velásquez
+**Integrantes del grupo:** Sebastián Velásquez
 **Repositorio:** https://github.com/SebasVelasquez/docker-semana3
 **Fecha en que se hicieron las pruebas:** 10 de noviembre de 2026
 
 ---
 
-## 1. Lo que hice, en pocas palabras
+## 1. Lo que hicimos, en pocas palabras
 
-Monté dos programas que trabajan juntos, cada uno dentro de su propia caja, y
-conseguí que se hablen entre ellos.
+Montamos dos programas que trabajan juntos, cada uno dentro de su propia caja,
+y conseguimos que se hablen entre ellos.
 
 Antes de seguir, conviene aclarar qué es una de esas cajas. **Un contenedor es
 un paquete cerrado que lleva dentro un programa y todo lo que ese programa
 necesita para funcionar**: la versión exacta del lenguaje, las librerías, la
 configuración. La ventaja es que funciona igual en cualquier computador,
-porque no depende de lo que tengas instalado. Docker es el programa que crea y
-maneja esas cajas.
+porque no depende de lo que cada uno tenga instalado. Docker es el programa
+que crea y maneja esas cajas.
 
-Yo hice dos:
+Nosotros hicimos dos:
 
-| | La caja | Qué hay dentro | Cómo la conseguí |
+| | La caja | Qué hay dentro | Cómo la conseguimos |
 |---|---|---|---|
-| **1** | `semana3-api` | Un programa en Python que recibe mensajes, los guarda y los devuelve cuando se los piden | La construí yo |
-| **2** | `semana3-db` | Una base de datos PostgreSQL, que es donde quedan guardados esos mensajes | La descargué ya hecha |
+| **1** | `semana3-api` | Un programa en Python que recibe mensajes, los guarda y los devuelve cuando se los piden | La construimos nosotros |
+| **2** | `semana3-db` | Una base de datos PostgreSQL, que es donde quedan guardados esos mensajes | La descargamos ya hecha |
 
 **La clave de la actividad está en que la primera caja no guarda nada por su
 cuenta.** Todo lo escribe y lo lee en la segunda. Si las dos no se estuvieran
@@ -37,10 +37,10 @@ funcione ya demuestra que hay comunicación entre ellas.
 
 ## 2. Cómo consiguen hablarse
 
-Esta es la parte central de la actividad, así que la explico despacio.
+Esta es la parte central de la actividad, así que la explicamos despacio.
 
 ```
-            mi computador
+          nuestro computador
                   │
                   │  http://localhost:5000
                   ▼
@@ -56,11 +56,11 @@ Esta es la parte central de la actividad, así que la explico despacio.
    └──────────────────────────────────────────────┘
 ```
 
-### Primero: las puse en la misma red
+### Primero: las pusimos en la misma red
 
 Docker permite crear **redes privadas**, que funcionan parecido a una red wifi
 de casa: los aparatos conectados a ella se ven entre sí, y los de fuera no
-entran. Yo creé una red a la que llamé `red-app` y conecté las dos cajas.
+entran. Creamos una red a la que llamamos `red-app` y conectamos las dos cajas.
 
 ### Segundo: se buscan por su nombre, no por un número
 
@@ -70,10 +70,10 @@ cambia cada vez que se reinicia, así que no sirve escribirlo a mano.
 
 Docker resuelve esto con algo parecido a **la agenda de contactos del
 teléfono**: en vez de memorizar el número, guardas el nombre y el teléfono lo
-busca por ti. Dentro de la red, cada caja tiene un nombre —yo las llamé `api` y
+busca por ti. Dentro de la red, cada caja tiene un nombre —las llamamos `api` y
 `db`— y basta con usar ese nombre.
 
-Por eso, en la configuración del programa puse simplemente:
+Por eso, en la configuración del programa pusimos simplemente:
 
 ```
 DB_HOST: db
@@ -87,10 +87,10 @@ DB_HOST: db
 
 ### Tercero: la base de datos no está abierta al exterior
 
-Decidí que **solo el programa** se pueda ver desde mi computador. La base de
-datos no: a ella únicamente se llega desde dentro de la red privada.
+Decidimos que **solo el programa** se pueda ver desde fuera. La base de datos
+no: a ella únicamente se llega desde dentro de la red privada.
 
-Esto lo hice por dos razones. La primera es de seguridad: una base de datos
+Lo hicimos por dos razones. La primera es de seguridad: una base de datos
 abierta a todo el mundo es un riesgo innecesario. La segunda sirve para esta
 actividad: si la base de datos estuviera abierta, se podría dudar de si la
 comunicación pasa de verdad por la red de Docker. Estando cerrada, no queda
@@ -98,13 +98,13 @@ duda posible.
 
 ---
 
-## 3. Cómo lo construí, paso a paso
+## 3. Cómo lo construimos, paso a paso
 
 ### Paso 1 — Escribir el programa
 
-Hice un programa pequeño en Python, usando una herramienta llamada Flask que
-sirve para crear este tipo de aplicaciones. Tiene cuatro funciones, cada una
-con su propia dirección web:
+Hicimos un programa pequeño en Python, usando una herramienta llamada Flask
+que sirve para crear este tipo de aplicaciones. Tiene cuatro funciones, cada
+una con su propia dirección web:
 
 | Dirección | Qué hace |
 |---|---|
@@ -113,7 +113,7 @@ con su propia dirección web:
 | `/mensajes` (enviar) | Guarda un mensaje nuevo |
 | `/mensajes` (consultar) | Devuelve todos los mensajes guardados |
 
-Dentro del programa tuve que resolver dos cosas que no son evidentes:
+Dentro del programa tuvimos que resolver dos cosas que no son evidentes:
 
 **Que el programa escuche a los de fuera.** Por defecto, estos programas solo
 se escuchan a sí mismos. Hay que decirle expresamente que acepte visitas de
@@ -122,7 +122,7 @@ fuera de su caja; si no, queda incomunicado aunque todo lo demás esté bien.
 **Que espere a que la base de datos esté lista.** Una base de datos tarda unos
 segundos en arrancar, igual que un computador no está listo en cuanto le das
 al botón. Si el programa intenta conectarse antes de tiempo, falla y se apaga.
-Así que le puse instrucciones para que reintente hasta 30 veces antes de
+Así que le pusimos instrucciones para que reintente hasta 30 veces antes de
 rendirse.
 
 ### Paso 2 — Escribir la receta de la caja
@@ -140,13 +140,13 @@ EXPOSE 5000                # avisa de que escucha en el número 5000
 CMD ["python", "app.py"]   # y al encender la caja, arranca el programa
 ```
 
-**¿Por qué meto primero la lista de librerías y después el programa?** Porque
-Docker **guarda el trabajo que ya hizo** para no repetirlo. Si luego cambio
-algo del programa pero no de las librerías, no vuelve a descargarlas: reutiliza
-lo que ya tenía.
+**¿Por qué metemos primero la lista de librerías y después el programa?**
+Porque Docker **guarda el trabajo que ya hizo** para no repetirlo. Si luego
+cambiamos algo del programa pero no de las librerías, no vuelve a
+descargarlas: reutiliza lo que ya tenía.
 
-Y esto no es teoría: se notó muchísimo. **La primera vez que construí la caja
-tardó 19,8 segundos. La segunda, 0,5 segundos.**
+Y esto no es teoría: se notó muchísimo. **La primera vez que construimos la
+caja tardó 19,8 segundos. La segunda, 0,5 segundos.**
 
 ### Paso 3 — Decirle a Docker cómo encajan las dos cajas
 
@@ -173,7 +173,7 @@ services:
       retries: 10
 
   api:                               # el programa
-    build: ./api                     # constrúyelo con mi receta
+    build: ./api                     # constrúyelo con nuestra receta
     container_name: semana3-api
     environment:
       DB_HOST: db                    # <-- el NOMBRE de la otra caja
@@ -182,7 +182,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
     ports:
-      - "${API_PORT}:5000"           # esto sí lo abro a mi computador
+      - "${API_PORT}:5000"           # esto sí lo abrimos al exterior
     depends_on:
       db:
         condition: service_healthy   # no arranques hasta que la otra esté lista
@@ -202,30 +202,31 @@ Tres detalles que vale la pena señalar:
   responde que sí. Además, el propio programa reintenta por su cuenta. Es una
   precaución doble a propósito, porque es justo donde suele fallar todo.
 
-- **Los datos se guardan aparte de la caja.** Si tiro la caja y la vuelvo a
-  crear, los mensajes siguen ahí. Es como tener los archivos en un disco
+- **Los datos se guardan aparte de la caja.** Si tiramos la caja y la volvemos
+  a crear, los mensajes siguen ahí. Es como tener los archivos en un disco
   externo en vez de dentro del computador.
 
 - **La base de datos no tiene la línea que la abre al exterior.** Es
-  intencionado, como expliqué antes.
+  intencionado, como explicamos antes.
 
 ### Paso 4 — Guardar las contraseñas donde no se vean
 
 **Las contraseñas no están escritas en el código.** Están en un archivo aparte
-llamado `.env`, que se queda en mi computador y **nunca se sube a internet**.
+llamado `.env`, que se queda en el computador de cada uno y **nunca se sube a
+internet**.
 
-Para que otra persona sepa qué datos necesita sin que yo le revele los míos,
-dejé un segundo archivo, `.env.example`, que es una plantilla: dice qué hace
-falta rellenar, pero con valores de mentira.
+Para que cualquiera sepa qué datos necesita sin que nadie revele los suyos,
+dejamos un segundo archivo, `.env.example`, que es una plantilla: dice qué
+hace falta rellenar, pero con valores de mentira.
 
 | Archivo | ¿Se sube? | Qué lleva |
 |---|---|---|
-| `.env` | ❌ No | Mis contraseñas de verdad |
+| `.env` | ❌ No | Las contraseñas de verdad |
 | `.env.example` | ✅ Sí | La plantilla vacía, para que otro sepa qué poner |
 
-Para asegurarme de que el archivo con las contraseñas no se subiera por
-descuido, lo añadí a la lista de archivos ignorados y además **busqué mi
-contraseña dentro de todo lo que iba a subir**: no aparece en ninguno.
+Para asegurarnos de que el archivo con las contraseñas no se subiera por
+descuido, lo añadimos a la lista de archivos ignorados y además **buscamos la
+contraseña dentro de todo lo que íbamos a subir**: no aparece en ninguno.
 
 ---
 
@@ -251,11 +252,11 @@ docker compose down    # apagar
 
 ---
 
-## 5. Las pruebas que hice
+## 5. Las pruebas que hicimos
 
-Lo ejecuté en **GitHub Codespaces**, que es un computador prestado que funciona
-dentro del navegador. Lo usé porque en el equipo donde trabajo no tengo
-permisos para instalar Docker.
+Lo ejecutamos en **GitHub Codespaces**, que es un computador prestado que
+funciona dentro del navegador. Lo usamos porque en los equipos donde
+trabajamos no teníamos permisos para instalar Docker.
 
 ### Prueba 1 — Las dos cajas se construyen y encienden
 
@@ -264,19 +265,19 @@ permisos para instalar Docker.
 Se ve cómo Docker construye la caja del programa, crea la red y enciende las
 dos. Lo importante está en las dos últimas líneas: la base de datos aparece
 como **`Healthy`**, es decir, ya contesta. Y solo después de eso arranca el
-programa. Es exactamente el orden que yo había pedido.
+programa. Es exactamente el orden que habíamos pedido.
 
 ### Prueba 2 — Comprobar que están funcionando
 
 ![Listado de las cajas encendidas](evidencias/2-docker-ps.png)
 
-Este comando lista las cajas que están encendidas en este momento. Aparecen las
+Este comando lista las cajas que están encendidas en ese momento. Aparecen las
 dos, y llevan un rato funcionando sin caerse.
 
 **Lo que hay que mirar está en la columna de la derecha, la de los puertos:**
 
 - El programa (`semana3-api`) tiene una flecha: `0.0.0.0:5000->5000`. Esa
-  flecha significa que está abierto y yo puedo entrar desde mi computador.
+  flecha significa que está abierto y se puede entrar desde fuera.
 - La base de datos (`semana3-db`) solo dice `5432`, **sin flecha**. No está
   abierta. A ella solo se llega desde dentro de la red privada.
 
@@ -284,10 +285,10 @@ dos, y llevan un rato funcionando sin caerse.
 
 ![Pruebas de las direcciones del programa](evidencias/3-curl-salud-y-post.png)
 
-Aquí le pedí dos cosas al programa.
+Aquí le pedimos dos cosas al programa.
 
-**La primera es la prueba más directa de toda la actividad.** Le pedí que le
-preguntara a la base de datos quién es. Esto es lo que respondió:
+**La primera es la prueba más directa de toda la actividad.** Le pedimos que
+le preguntara a la base de datos quién es. Esto es lo que respondió:
 
 ```json
 {
@@ -312,44 +313,45 @@ la hora exacta en que lo hizo.
 
 Esta captura cierra la demostración, y tiene dos partes.
 
-**Arriba**, entré directamente a la caja de la base de datos y le pedí que me
-enseñara lo que tiene guardado, sin pasar por el programa. Ahí están los dos
-mensajes que había enviado antes. Es decir: **lo que entró por una caja
-terminó físicamente dentro de la otra.** Si no hubiera comunicación entre
+**Arriba**, entramos directamente a la caja de la base de datos y le pedimos
+que nos enseñara lo que tiene guardado, sin pasar por el programa. Ahí están
+los dos mensajes que habíamos enviado antes. Es decir: **lo que entró por una
+caja terminó físicamente dentro de la otra.** Si no hubiera comunicación entre
 ellas, esa lista estaría vacía.
 
-**Abajo**, le pedí al programa que buscara a quién corresponde el nombre `db`.
-Contestó `172.18.0.2`, que es una dirección de la red privada. Ese nombre no
-existe en internet ni en mi computador: solo existe dentro de la red que creé.
+**Abajo**, le pedimos al programa que buscara a quién corresponde el nombre
+`db`. Contestó `172.18.0.2`, que es una dirección de la red privada. Ese
+nombre no existe en internet ni en ningún computador de fuera: solo existe
+dentro de la red que creamos.
 
-De regalo, en la misma captura se ve una tercera comprobación: si intento
+De regalo, en la misma captura se ve una tercera comprobación: si se intenta
 guardar un mensaje vacío, el programa lo rechaza con un aviso de error en vez
 de guardar basura.
 
 ---
 
-## 6. Un fallo que apareció al ejecutarlo, y cómo lo arreglé
+## 6. Un fallo que apareció al ejecutarlo, y cómo lo arreglamos
 
-La primera vez que lancé las pruebas, varias líneas devolvieron esto:
+La primera vez que lanzamos las pruebas, varias líneas devolvieron esto:
 
 ```
 python3: command not found
 ```
 
-**Qué pasaba.** Para que las respuestas se vieran ordenadas en pantalla, yo
-usaba una herramienta que viene con Python. Pero el computador prestado donde
-estaba trabajando **no tenía Python instalado**. Las pruebas sí funcionaban
-—los mensajes llegaban a la base de datos— pero las respuestas no se alcanzaban
-a mostrar.
+**Qué pasaba.** Para que las respuestas se vieran ordenadas en pantalla,
+usábamos una herramienta que viene con Python. Pero el computador prestado
+donde estábamos trabajando **no tenía Python instalado**. Las pruebas sí
+funcionaban —los mensajes llegaban a la base de datos— pero las respuestas no
+se alcanzaban a mostrar.
 
-**Cómo lo arreglé.** En vez de dar por hecho que esa herramienta está en todas
-partes, cambié las instrucciones para que primero mire qué hay disponible y use
-lo que encuentre. Si no encuentra nada, al menos enseña la respuesta sin
-ordenar, pero nunca la pierde.
+**Cómo lo arreglamos.** En vez de dar por hecho que esa herramienta está en
+todas partes, cambiamos las instrucciones para que primero miren qué hay
+disponible y usen lo que encuentren. Si no encuentran nada, al menos enseñan
+la respuesta sin ordenar, pero nunca la pierden.
 
-**Qué aprendí.** El programa estaba bien escrito y no tenía ningún error de
+**Qué aprendimos.** El programa estaba bien escrito y no tenía ningún error de
 forma. El fallo solo apareció al ejecutarlo de verdad. No se puede dar por
-sentado qué herramientas trae un computador que no es el tuyo.
+sentado qué herramientas trae un computador que no es el propio.
 
 ---
 
@@ -362,7 +364,7 @@ docker-semana3/
 │   ├── app.py              el programa
 │   └── requirements.txt    la lista de librerías que necesita
 ├── evidencias/             las capturas de este documento
-├── .env                    mis contraseñas (NO se sube)
+├── .env                    las contraseñas (NO se sube)
 ├── .env.example            la plantilla de contraseñas (sí se sube)
 ├── .gitignore              la lista de lo que no se debe subir
 ├── docker-compose.yml      cómo encajan las dos cajas

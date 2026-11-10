@@ -1,0 +1,28 @@
+{
+  "name": "Semana 3 - Dos contenedores Docker",
+
+  // Entorno base: Ubuntu. Aquí NO corre la aplicación; este es el
+  // escritorio de trabajo desde el que lanzarás los dos contenedores.
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+  // Esta línea es la importante: instala Docker y Docker Compose
+  // dentro del Codespace, que es lo que no tienes en tu PC.
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+
+  // Cuando la API levante en el 5000, Codespaces te dará una URL
+  // pública para abrirla en el navegador.
+  "forwardPorts": [5000],
+  "portsAttributes": {
+    "5000": {
+      "label": "API Flask",
+      "onAutoForward": "notify"
+    }
+  },
+
+  // Al crearse el Codespace genera el .env a partir de la plantilla,
+  // con una contraseña aleatoria. El .env real nunca viaja en el
+  // repositorio, así que hay que fabricarlo aquí.
+  "postCreateCommand": "bash .devcontainer/preparar.sh"
+}

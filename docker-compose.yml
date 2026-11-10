@@ -1,0 +1,62 @@
+# Orquesta los DOS contenedores del proyecto y la red que los comunica.
+# Docker Compose lee automáticamente el archivo .env que está al lado de
+# este archivo y reemplaza cada ${VARIABLE} por su valor.
+
+services:
+  # ---------------------------------------------------------------
+  # CONTENEDOR 1: la base de datos PostgreSQL
+  # ---------------------------------------------------------------
+  db:
+    image: postgres:16-alpine          # imagen oficial, no se construye
+    container_name: semana3-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      # Guarda los datos fuera del contenedor: si lo borras y lo vuelves
+      # a crear, los mensajes siguen ahí.
+      - datos-db:/var/lib/postgresql/data
+    networks:
+      - red-app
+    healthcheck:
+      # Docker pregunta cada 5 s si PostgreSQL ya acepta conexiones.
+      # La API no arranca hasta que esta prueba pase.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---------------------------------------------------------------
+  # CONTENEDOR 2: la API en Flask
+  # ---------------------------------------------------------------
+  api:
+    build: ./api                       # se construye con api/Dockerfile
+    container_name: semana3-api
+    environment:
+      DB_HOST: db                      # <-- NOMBRE DEL SERVICIO, no localhost
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+    ports:
+      # "puerto de tu PC : puerto dentro del contenedor"
+      - "${API_PORT}:5000"
+    depends_on:
+      db:
+        condition: service_healthy     # espera el healthcheck de arriba
+    networks:
+      - red-app
+    restart: unless-stopped
+
+# -------------------------------------------------------------------
+# La red privada que comparten los dos contenedores. Dentro de ella,
+# Docker tiene un DNS propio: el nombre "db" apunta al contenedor de
+# PostgreSQL y el nombre "api" al de Flask.
+# -------------------------------------------------------------------
+networks:
+  red-app:
+    driver: bridge
+
+volumes:
+  datos-db:

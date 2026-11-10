@@ -1,0 +1,15 @@
+# Credenciales reales: nunca se suben al repositorio.
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editores / sistema
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store

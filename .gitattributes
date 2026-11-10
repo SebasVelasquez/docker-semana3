@@ -1,0 +1,7 @@
+# Los contenedores corren Linux: los archivos deben guardarse con
+# finales de línea LF, aunque estés trabajando en Windows.
+# Sin esto, Git los convierte a CRLF y algunas herramientas dentro
+# del contenedor fallan con errores difíciles de entender.
+* text=auto eol=lf
+*.png binary
+*.jpg binary

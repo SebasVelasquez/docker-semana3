@@ -1,5 +1,8 @@
 # Semana 3 — Dos contenedores Docker comunicados entre sí
 
+> 📄 **¿Vienes a calificar la actividad?** El documento de entrega, con el
+> paso a paso y las capturas de evidencia, está en **[ENTREGA.md](ENTREGA.md)**.
+
 Proyecto de ejemplo con **dos contenedores** que se comunican por una red
 privada de Docker:
 

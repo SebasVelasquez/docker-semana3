@@ -5,377 +5,404 @@ comunicados entre sí.
 
 **Autor:** Sebastián Velásquez
 **Repositorio:** https://github.com/SebasVelasquez/docker-semana3
-**Fecha de ejecución de las pruebas:** 10 de noviembre de 2026
+**Fecha en que se hicieron las pruebas:** 10 de noviembre de 2026
 
 ---
 
-## 1. Qué se construyó
+## 1. Lo que hice, en pocas palabras
 
-Dos contenedores que trabajan juntos:
+Monté dos programas que trabajan juntos, cada uno dentro de su propia caja, y
+conseguí que se hablen entre ellos.
 
-| # | Contenedor | Qué es | Imagen |
+Antes de seguir, conviene aclarar qué es una de esas cajas. **Un contenedor es
+un paquete cerrado que lleva dentro un programa y todo lo que ese programa
+necesita para funcionar**: la versión exacta del lenguaje, las librerías, la
+configuración. La ventaja es que funciona igual en cualquier computador,
+porque no depende de lo que tengas instalado. Docker es el programa que crea y
+maneja esas cajas.
+
+Yo hice dos:
+
+| | La caja | Qué hay dentro | Cómo la conseguí |
 |---|---|---|---|
-| 1 | `semana3-api` | Una API hecha en Python con Flask, que guarda y consulta mensajes | Construida a medida con `api/Dockerfile` |
-| 2 | `semana3-db` | Una base de datos PostgreSQL, que almacena esos mensajes | `postgres:16-alpine` (imagen oficial) |
+| **1** | `semana3-api` | Un programa en Python que recibe mensajes, los guarda y los devuelve cuando se los piden | La construí yo |
+| **2** | `semana3-db` | Una base de datos PostgreSQL, que es donde quedan guardados esos mensajes | La descargué ya hecha |
 
-La API no guarda nada en su propia memoria: **todo lo escribe y lo lee del
-otro contenedor**. Si la base de datos no estuviera accesible, la API no
-podría responder. Eso es lo que demuestra que los dos se comunican.
+**La clave de la actividad está en que la primera caja no guarda nada por su
+cuenta.** Todo lo escribe y lo lee en la segunda. Si las dos no se estuvieran
+hablando, la primera no podría responder nada. Por eso, el simple hecho de que
+funcione ya demuestra que hay comunicación entre ellas.
 
 ---
 
-## 2. Cómo se comunican (la idea central)
+## 2. Cómo consiguen hablarse
+
+Esta es la parte central de la actividad, así que la explico despacio.
 
 ```
             mi computador
                   │
-                  │  http://localhost:5000      ← único puerto publicado
+                  │  http://localhost:5000
                   ▼
    ┌──────────────────────────────────────────────┐
-   │   red de Docker:  red-app  (driver bridge)   │
+   │        la red privada:  "red-app"            │
    │                                              │
    │   ┌───────────────┐      ┌────────────────┐  │
    │   │  semana3-api  │─────▶│   semana3-db   │  │
-   │   │  Flask :5000  │ 5432 │  PostgreSQL    │  │
+   │   │   el programa │      │  la base de    │  │
+   │   │               │      │     datos      │  │
    │   └───────────────┘      └────────────────┘  │
-   │     servicio "api"         servicio "db"     │
+   │     se llama "api"         se llama "db"     │
    └──────────────────────────────────────────────┘
 ```
 
-Tres cosas que hacen posible la comunicación:
+### Primero: las puse en la misma red
 
-**a) Están en la misma red.** En `docker-compose.yml` se declara una red
-llamada `red-app` y los dos servicios se conectan a ella. Solo los
-contenedores de esa red se ven entre sí.
+Docker permite crear **redes privadas**, que funcionan parecido a una red wifi
+de casa: los aparatos conectados a ella se ven entre sí, y los de fuera no
+entran. Yo creé una red a la que llamé `red-app` y conecté las dos cajas.
 
-**b) Se llaman por el nombre del servicio, no por `localhost`.** Docker
-levanta un servidor DNS propio dentro de la red: el nombre `db` se traduce a
-la dirección IP del contenedor de PostgreSQL. Por eso la API se configura con
-`DB_HOST: db`.
+### Segundo: se buscan por su nombre, no por un número
 
-> **¿Por qué no `localhost`?** Porque dentro de un contenedor, `localhost`
-> significa *ese mismo contenedor*. Si la API buscara la base de datos en
-> `localhost:5432`, se estaría buscando a sí misma, y ahí no hay ninguna base
-> de datos. Es el error más común al empezar con Docker.
+Normalmente, para que un programa encuentre a otro en una red hace falta saber
+su dirección, que es un número tipo `172.18.0.2`. El problema es que ese número
+cambia cada vez que se reinicia, así que no sirve escribirlo a mano.
 
-**c) La base de datos no se publica al exterior.** El servicio `db` no tiene
-sección `ports:`, así que su puerto 5432 **solo** existe dentro de `red-app`.
-El único puerto abierto hacia mi computador es el 5000 de la API. Esto es
-buena práctica de seguridad y, además, prueba que el tráfico entre ambos pasa
-por la red interna de Docker y no por fuera.
+Docker resuelve esto con algo parecido a **la agenda de contactos del
+teléfono**: en vez de memorizar el número, guardas el nombre y el teléfono lo
+busca por ti. Dentro de la red, cada caja tiene un nombre —yo las llamé `api` y
+`db`— y basta con usar ese nombre.
+
+Por eso, en la configuración del programa puse simplemente:
+
+```
+DB_HOST: db
+```
+
+> **El error más común al empezar con Docker** es poner ahí `localhost`.
+> `localhost` significa "yo mismo". Dentro de una caja, `localhost` es *esa
+> misma caja*. Si el programa buscara la base de datos en `localhost`, se
+> estaría buscando a sí mismo, y ahí no hay ninguna base de datos. Sería como
+> buscar a un amigo llamándote a tu propio teléfono.
+
+### Tercero: la base de datos no está abierta al exterior
+
+Decidí que **solo el programa** se pueda ver desde mi computador. La base de
+datos no: a ella únicamente se llega desde dentro de la red privada.
+
+Esto lo hice por dos razones. La primera es de seguridad: una base de datos
+abierta a todo el mundo es un riesgo innecesario. La segunda sirve para esta
+actividad: si la base de datos estuviera abierta, se podría dudar de si la
+comunicación pasa de verdad por la red de Docker. Estando cerrada, no queda
+duda posible.
 
 ---
 
-## 3. Paso a paso de cómo se hizo
+## 3. Cómo lo construí, paso a paso
 
-### Paso 1 — La aplicación (`api/app.py`)
+### Paso 1 — Escribir el programa
 
-Una API Flask con cuatro rutas:
+Hice un programa pequeño en Python, usando una herramienta llamada Flask que
+sirve para crear este tipo de aplicaciones. Tiene cuatro funciones, cada una
+con su propia dirección web:
 
-| Método y ruta | Para qué sirve |
+| Dirección | Qué hace |
 |---|---|
-| `GET /` | Página de bienvenida; confirma que la API responde |
-| `GET /salud` | Le pregunta su versión a PostgreSQL — **prueba la comunicación** |
-| `POST /mensajes` | Guarda un mensaje en la base de datos |
-| `GET /mensajes` | Devuelve todos los mensajes guardados |
+| `/` | Una página de bienvenida: sirve para comprobar que el programa está despierto |
+| `/salud` | Le pregunta a la base de datos cómo se llama y qué versión tiene — **esto es lo que prueba que se hablan** |
+| `/mensajes` (enviar) | Guarda un mensaje nuevo |
+| `/mensajes` (consultar) | Devuelve todos los mensajes guardados |
 
-Dos decisiones importantes dentro del código:
+Dentro del programa tuve que resolver dos cosas que no son evidentes:
 
-- **`app.run(host="0.0.0.0", port=5000)`.** Por defecto Flask escucha solo en
-  `127.0.0.1`, lo que dentro de un contenedor lo dejaría incomunicado. Con
-  `0.0.0.0` acepta conexiones que vienen de fuera del contenedor.
-- **Una función que espera a la base de datos.** PostgreSQL tarda unos
-  segundos en aceptar conexiones. `esperar_base_de_datos()` reintenta hasta 30
-  veces antes de rendirse, para que la API no se muera en el primer intento.
+**Que el programa escuche a los de fuera.** Por defecto, estos programas solo
+se escuchan a sí mismos. Hay que decirle expresamente que acepte visitas de
+fuera de su caja; si no, queda incomunicado aunque todo lo demás esté bien.
 
-### Paso 2 — La receta de la imagen (`api/Dockerfile`)
+**Que espere a que la base de datos esté lista.** Una base de datos tarda unos
+segundos en arrancar, igual que un computador no está listo en cuanto le das
+al botón. Si el programa intenta conectarse antes de tiempo, falla y se apaga.
+Así que le puse instrucciones para que reintente hasta 30 veces antes de
+rendirse.
+
+### Paso 2 — Escribir la receta de la caja
+
+Para que Docker pueda construir una caja hay que darle una receta, paso por
+paso, como si fuera de cocina. Se guarda en un archivo llamado `Dockerfile`:
 
 ```dockerfile
-FROM python:3.12-slim      # imagen base ligera
-WORKDIR /app               # carpeta de trabajo dentro del contenedor
-COPY requirements.txt .    # primero las dependencias...
-RUN pip install --no-cache-dir -r requirements.txt
-COPY app.py .              # ...y después el código
-ENV PYTHONUNBUFFERED=1     # para que los print() salgan en los logs
-EXPOSE 5000
-CMD ["python", "app.py"]   # qué se ejecuta al arrancar
+FROM python:3.12-slim      # parte de una caja que ya trae Python
+WORKDIR /app               # trabaja en esta carpeta
+COPY requirements.txt .    # mete la lista de librerías que hacen falta
+RUN pip install --no-cache-dir -r requirements.txt   # e instálalas
+COPY app.py .              # ahora mete el programa
+EXPOSE 5000                # avisa de que escucha en el número 5000
+CMD ["python", "app.py"]   # y al encender la caja, arranca el programa
 ```
 
-**¿Por qué se copia `requirements.txt` antes que `app.py`?** Por la **caché de
-capas**. Docker guarda el resultado de cada instrucción. Si solo cambio
-`app.py`, Docker reutiliza la capa donde ya instaló las librerías en vez de
-descargarlas otra vez. En la práctica esto se notó muchísimo: la primera
-construcción tardó **19,8 segundos** y la segunda **0,5 segundos**, con todos
-los pasos marcados como `CACHED`.
+**¿Por qué meto primero la lista de librerías y después el programa?** Porque
+Docker **guarda el trabajo que ya hizo** para no repetirlo. Si luego cambio
+algo del programa pero no de las librerías, no vuelve a descargarlas: reutiliza
+lo que ya tenía.
 
-### Paso 3 — La orquestación (`docker-compose.yml`)
+Y esto no es teoría: se notó muchísimo. **La primera vez que construí la caja
+tardó 19,8 segundos. La segunda, 0,5 segundos.**
 
-Aquí se define todo lo demás: los dos servicios, la red que comparten, el
-volumen donde persisten los datos y el orden de arranque.
+### Paso 3 — Decirle a Docker cómo encajan las dos cajas
+
+Falta explicarle a Docker que son dos cajas, que van en la misma red, cuál
+arranca primero y dónde se guardan los datos. Todo eso va en un archivo
+llamado `docker-compose.yml`:
 
 ```yaml
 services:
-  db:
-    image: postgres:16-alpine
+  db:                                # la base de datos
+    image: postgres:16-alpine        # usa esta, ya hecha
     container_name: semana3-db
-    environment:
+    environment:                     # su usuario y su contraseña
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - datos-db:/var/lib/postgresql/data
-    networks: [red-app]
-    healthcheck:
+      - datos-db:/var/lib/postgresql/data    # dónde guarda la información
+    networks: [red-app]              # conéctala a la red
+    healthcheck:                     # y pregúntale cada 5 s si ya está lista
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  api:
-    build: ./api
+  api:                               # el programa
+    build: ./api                     # constrúyelo con mi receta
     container_name: semana3-api
     environment:
-      DB_HOST: db          # <-- NOMBRE DEL SERVICIO, no localhost
+      DB_HOST: db                    # <-- el NOMBRE de la otra caja
       DB_PORT: 5432
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
     ports:
-      - "${API_PORT}:5000"
+      - "${API_PORT}:5000"           # esto sí lo abro a mi computador
     depends_on:
       db:
-        condition: service_healthy
+        condition: service_healthy   # no arranques hasta que la otra esté lista
     networks: [red-app]
 
 networks:
-  red-app:
-    driver: bridge
+  red-app:                           # la red privada que comparten
 
 volumes:
-  datos-db:
+  datos-db:                          # el "disco" donde quedan los datos
 ```
 
-Puntos que vale la pena señalar:
+Tres detalles que vale la pena señalar:
 
-- **`healthcheck` + `depends_on: condition: service_healthy`.** Docker
-  pregunta cada 5 segundos si PostgreSQL ya acepta conexiones, y no arranca la
-  API hasta que la respuesta es afirmativa. Sin esto, la API arrancaría antes
-  de tiempo y fallaría.
-- **El volumen `datos-db`.** Guarda la información fuera del contenedor, así
-  que los mensajes sobreviven aunque se borre y se vuelva a crear.
-- **`db` no tiene `ports:`**, intencionalmente, como se explicó arriba.
+- **La espera está resuelta dos veces.** Docker le pregunta a la base de datos
+  cada cinco segundos si ya puede atender, y no enciende el programa hasta que
+  responde que sí. Además, el propio programa reintenta por su cuenta. Es una
+  precaución doble a propósito, porque es justo donde suele fallar todo.
 
-### Paso 4 — Las credenciales (`.env`)
+- **Los datos se guardan aparte de la caja.** Si tiro la caja y la vuelvo a
+  crear, los mensajes siguen ahí. Es como tener los archivos en un disco
+  externo en vez de dentro del computador.
 
-Las contraseñas **no están escritas en el código ni en el compose**. Viven en
-un archivo `.env` que Docker Compose lee automáticamente:
+- **La base de datos no tiene la línea que la abre al exterior.** Es
+  intencionado, como expliqué antes.
 
-```
-POSTGRES_USER=usuario_app
-POSTGRES_PASSWORD=...
-POSTGRES_DB=semana3
-API_PORT=5000
-```
+### Paso 4 — Guardar las contraseñas donde no se vean
 
-| Archivo | ¿Se sube a GitHub? | Para qué |
+**Las contraseñas no están escritas en el código.** Están en un archivo aparte
+llamado `.env`, que se queda en mi computador y **nunca se sube a internet**.
+
+Para que otra persona sepa qué datos necesita sin que yo le revele los míos,
+dejé un segundo archivo, `.env.example`, que es una plantilla: dice qué hace
+falta rellenar, pero con valores de mentira.
+
+| Archivo | ¿Se sube? | Qué lleva |
 |---|---|---|
-| `.env` | ❌ **No** | Credenciales reales de mi máquina |
-| `.env.example` | ✅ Sí | Plantilla: dice qué variables hacen falta, sin revelar los valores |
+| `.env` | ❌ No | Mis contraseñas de verdad |
+| `.env.example` | ✅ Sí | La plantilla vacía, para que otro sepa qué poner |
 
-El `.gitignore` incluye la línea `.env`, de modo que Git lo ignora. Se verificó
-con `git check-ignore .env` y buscando la contraseña dentro de los archivos
-que sí se subían: no aparece en ninguno.
+Para asegurarme de que el archivo con las contraseñas no se subiera por
+descuido, lo añadí a la lista de archivos ignorados y además **busqué mi
+contraseña dentro de todo lo que iba a subir**: no aparece en ninguno.
 
 ---
 
-## 4. Cómo levantar el proyecto
+## 4. Cómo se pone en marcha
 
 ```bash
 git clone https://github.com/SebasVelasquez/docker-semana3.git
 cd docker-semana3
 
-cp .env.example .env          # crear el archivo de credenciales
-# (editar .env y poner una contraseña propia)
+cp .env.example .env          # crear el archivo de contraseñas
+# (abrir .env y poner una contraseña propia)
 
-docker compose up --build -d  # construir y levantar los dos contenedores
+docker compose up --build -d  # construir y encender las dos cajas
 ```
 
-Para comprobar y apagar:
+Y para comprobarlo o apagarlo:
 
 ```bash
-docker ps                     # ver los dos contenedores corriendo
-./probar.sh                   # ejecutar todas las pruebas
-docker compose down           # apagar
-docker compose down -v        # apagar y borrar también los datos
+docker ps              # ver las dos cajas encendidas
+./probar.sh            # lanzar todas las pruebas de golpe
+docker compose down    # apagar
 ```
 
 ---
 
-## 5. Evidencias
+## 5. Las pruebas que hice
 
-### Evidencia 1 — Los dos contenedores se construyen y arrancan
+Lo ejecuté en **GitHub Codespaces**, que es un computador prestado que funciona
+dentro del navegador. Lo usé porque en el equipo donde trabajo no tengo
+permisos para instalar Docker.
 
-Resultado de `docker compose up --build -d`:
+### Prueba 1 — Las dos cajas se construyen y encienden
 
-![Resultado de docker compose up](evidencias/1-docker-compose-up.png)
+![Resultado de encender las dos cajas](evidencias/1-docker-compose-up.png)
 
-La imagen de la API se construye, la red `red-app` se crea, y los dos
-contenedores arrancan. Nótese que `semana3-db` aparece como **`Healthy`**:
-el `healthcheck` pasó, y solo entonces arrancó `semana3-api`.
+Se ve cómo Docker construye la caja del programa, crea la red y enciende las
+dos. Lo importante está en las dos últimas líneas: la base de datos aparece
+como **`Healthy`**, es decir, ya contesta. Y solo después de eso arranca el
+programa. Es exactamente el orden que yo había pedido.
 
-### Evidencia 2 — Los dos contenedores están corriendo
+### Prueba 2 — Comprobar que están funcionando
 
-Resultado de `docker ps`:
+![Listado de las cajas encendidas](evidencias/2-docker-ps.png)
 
-![Salida de docker ps](evidencias/2-docker-ps.png)
+Este comando lista las cajas que están encendidas en este momento. Aparecen las
+dos, y llevan un rato funcionando sin caerse.
 
-Lo que hay que mirar en esta captura:
+**Lo que hay que mirar está en la columna de la derecha, la de los puertos:**
 
-| Contenedor | Imagen | Estado | Puertos |
-|---|---|---|---|
-| `semana3-api` | `docker-semana3-api` | `Up` | `0.0.0.0:5000->5000/tcp` |
-| `semana3-db` | `postgres:16-alpine` | `Up (healthy)` | `5432/tcp` |
+- El programa (`semana3-api`) tiene una flecha: `0.0.0.0:5000->5000`. Esa
+  flecha significa que está abierto y yo puedo entrar desde mi computador.
+- La base de datos (`semana3-db`) solo dice `5432`, **sin flecha**. No está
+  abierta. A ella solo se llega desde dentro de la red privada.
 
-La diferencia en la columna **PORTS** es la clave: la API tiene
-`0.0.0.0:5000->5000/tcp`, es decir, está publicada hacia mi computador. La base
-de datos solo dice `5432/tcp`, **sin** redirección: no es alcanzable desde
-fuera, únicamente desde dentro de la red de Docker.
+### Prueba 3 — El programa alcanza a la base de datos
 
-### Evidencia 3 — La API se comunica con la base de datos
+![Pruebas de las direcciones del programa](evidencias/3-curl-salud-y-post.png)
 
-Pruebas con `curl` sobre `GET /salud` y `POST /mensajes`:
+Aquí le pedí dos cosas al programa.
 
-![Pruebas con curl](evidencias/3-curl-salud-y-post.png)
-
-La primera respuesta es la más importante:
+**La primera es la prueba más directa de toda la actividad.** Le pedí que le
+preguntara a la base de datos quién es. Esto es lo que respondió:
 
 ```json
 {
   "api": "ok",
   "base_de_datos": "ok",
   "host_base_de_datos": "db",
-  "version_postgres": "PostgreSQL 16.15 on x86_64-pc-linux-musl, ..."
+  "version_postgres": "PostgreSQL 16.15 ..."
 }
 ```
 
-La API se conectó al host **`db`** —el nombre del servicio— y PostgreSQL le
-respondió con su número de versión. Esa versión no puede inventarse: viene del
-otro contenedor.
+Se conectó usando el nombre **`db`**, y la base de datos le contestó diciendo
+su versión. **Ese dato no se puede inventar: viene de la otra caja.** Si no se
+estuvieran hablando, ahí habría un error.
 
-La segunda respuesta confirma que el mensaje se guardó, con el `id` que generó
-PostgreSQL y la marca de tiempo:
+**La segunda** fue enviarle un mensaje para que lo guardara. Respondió que lo
+había guardado, y de paso devolvió el número que le asignó la base de datos y
+la hora exacta en que lo hizo.
 
-```json
-{ "guardado": true,
-  "mensaje": { "id": 3, "texto": "Evidencia para la entrega",
-               "creado_en": "Tue, 10 Nov 2026 12:29:17 GMT" } }
-```
+### Prueba 4 — El mensaje está de verdad dentro de la otra caja
 
-### Evidencia 4 — El dato está realmente en PostgreSQL, y el DNS funciona
+![Consulta a la base de datos y búsqueda del nombre db](evidencias/4-pruebas-postgres-y-dns.png)
 
-![Consulta directa a PostgreSQL y resolución del nombre db](evidencias/4-pruebas-postgres-y-dns.png)
+Esta captura cierra la demostración, y tiene dos partes.
 
-Esta captura cierra la demostración con dos comprobaciones:
+**Arriba**, entré directamente a la caja de la base de datos y le pedí que me
+enseñara lo que tiene guardado, sin pasar por el programa. Ahí están los dos
+mensajes que había enviado antes. Es decir: **lo que entró por una caja
+terminó físicamente dentro de la otra.** Si no hubiera comunicación entre
+ellas, esa lista estaría vacía.
 
-**Prueba 8** — se entra al contenedor de la base de datos y se consulta la
-tabla directamente, sin pasar por la API:
+**Abajo**, le pedí al programa que buscara a quién corresponde el nombre `db`.
+Contestó `172.18.0.2`, que es una dirección de la red privada. Ese nombre no
+existe en internet ni en mi computador: solo existe dentro de la red que creé.
 
-```bash
-docker compose exec db psql -U usuario_app -d semana3 \
-  -c "SELECT id, texto, creado_en FROM mensajes ORDER BY id;"
-```
-
-Aparecen los dos mensajes enviados por `curl`. Es decir, los datos que entraron
-por el contenedor de la API **terminaron físicamente dentro del contenedor de
-PostgreSQL**. Si no hubiera comunicación entre ambos, esta tabla estaría vacía.
-
-**Prueba 9** — desde dentro del contenedor de la API se resuelve el nombre
-`db`:
-
-```bash
-docker compose exec api python -c "import socket; print(socket.gethostbyname('db'))"
-```
-
-Devuelve `172.18.0.2`, una dirección IP privada de la red `red-app`. Ese
-nombre no existe en internet ni en mi computador: lo crea el DNS interno de
-Docker a partir del nombre del servicio en `docker-compose.yml`.
-
-De regalo, en la misma captura se ve la **prueba 7**: enviar un mensaje vacío
-devuelve `400` con un mensaje de error, lo que demuestra que la API valida lo
-que recibe.
+De regalo, en la misma captura se ve una tercera comprobación: si intento
+guardar un mensaje vacío, el programa lo rechaza con un aviso de error en vez
+de guardar basura.
 
 ---
 
-## 6. Un error que apareció al ejecutar, y cómo se corrigió
+## 6. Un fallo que apareció al ejecutarlo, y cómo lo arreglé
 
-El proyecto se ejecutó en **GitHub Codespaces**. La primera corrida falló
-parcialmente:
+La primera vez que lancé las pruebas, varias líneas devolvieron esto:
 
 ```
-./probar.sh: line 42: python3: command not found
+python3: command not found
 ```
 
-**Causa.** El script `probar.sh` usaba `python3 -m json.tool` para mostrar el
-JSON con sangría, pero la imagen base del entorno (`ubuntu-24.04`) **no trae
-Python instalado**. Las peticiones de `curl` sí funcionaban —los datos
-llegaban a la base de datos—, pero las respuestas no se alcanzaban a imprimir.
+**Qué pasaba.** Para que las respuestas se vieran ordenadas en pantalla, yo
+usaba una herramienta que viene con Python. Pero el computador prestado donde
+estaba trabajando **no tenía Python instalado**. Las pruebas sí funcionaban
+—los mensajes llegaban a la base de datos— pero las respuestas no se alcanzaban
+a mostrar.
 
-**Corrección.** Se cambió el script para que use la herramienta que esté
-disponible en cada máquina, en vez de dar por hecho que hay Python:
+**Cómo lo arreglé.** En vez de dar por hecho que esa herramienta está en todas
+partes, cambié las instrucciones para que primero mire qué hay disponible y use
+lo que encuentre. Si no encuentra nada, al menos enseña la respuesta sin
+ordenar, pero nunca la pierde.
 
-```bash
-if command -v jq >/dev/null 2>&1; then
-  formatear_json() { jq .; }
-elif command -v python3 >/dev/null 2>&1; then
-  formatear_json() { python3 -m json.tool; }
-else
-  formatear_json() { cat; echo; }   # feo, pero nunca se pierde la respuesta
-fi
-```
-
-**Lección.** El código estaba correctamente escrito y la sintaxis era válida;
-el fallo solo apareció al ejecutarlo de verdad contra un Docker real. No se
-puede dar por hecho qué herramientas trae una imagen.
+**Qué aprendí.** El programa estaba bien escrito y no tenía ningún error de
+forma. El fallo solo apareció al ejecutarlo de verdad. No se puede dar por
+sentado qué herramientas trae un computador que no es el tuyo.
 
 ---
 
-## 7. Estructura del repositorio
+## 7. Qué hay en el repositorio
 
 ```
 docker-semana3/
-├── .devcontainer/
-│   ├── devcontainer.json       # prepara Docker en GitHub Codespaces
-│   └── preparar.sh             # genera el .env al crear el entorno
 ├── api/
-│   ├── Dockerfile              # receta de la imagen de la API
-│   ├── app.py                  # la aplicación Flask
-│   └── requirements.txt        # Flask + psycopg2-binary
-├── evidencias/                 # las capturas de este documento
-├── .env                        # credenciales reales (NO se sube)
-├── .env.example                # plantilla de credenciales (sí se sube)
-├── .gitattributes              # fuerza finales de línea LF
-├── .gitignore                  # ignora .env
-├── docker-compose.yml          # los 2 servicios, la red y el volumen
-├── probar.sh                   # ejecuta las 9 pruebas
-├── ENTREGA.md                  # este documento
-└── README.md                   # documentación del proyecto
+│   ├── Dockerfile          la receta para construir la caja del programa
+│   ├── app.py              el programa
+│   └── requirements.txt    la lista de librerías que necesita
+├── evidencias/             las capturas de este documento
+├── .env                    mis contraseñas (NO se sube)
+├── .env.example            la plantilla de contraseñas (sí se sube)
+├── .gitignore              la lista de lo que no se debe subir
+├── docker-compose.yml      cómo encajan las dos cajas
+├── probar.sh               lanza todas las pruebas de golpe
+├── ENTREGA.md              este documento
+└── README.md               las instrucciones del proyecto
 ```
 
 ---
 
-## 8. Resumen de lo que se cumplió
+## 8. Resumen de lo que pedía la actividad
 
-| Requisito de la actividad | Estado |
+| Lo que se pedía | Dónde se ve |
 |---|---|
-| Dos contenedores construidos con Docker | ✅ `semana3-api` y `semana3-db` |
-| Los contenedores se comunican entre sí | ✅ Demostrado en las evidencias 3 y 4 |
-| Dockerfile de la API | ✅ `api/Dockerfile` |
-| `docker-compose.yml` que levanta ambos | ✅ Con red, volumen y healthcheck |
-| Misma red, comunicación por nombre de servicio | ✅ Red `red-app`, host `db` |
-| Credenciales en `.env`, con `.env.example` | ✅ Y `.env` excluido en `.gitignore` |
-| Endpoint que guarda y consulta en la base de datos | ✅ `POST` y `GET /mensajes` |
-| Ejecución con `docker compose up --build` | ✅ Evidencia 1 |
-| Pruebas con `curl` y corrección de errores | ✅ Evidencias 3 y 4; error corregido en la sección 6 |
-| Evidencia de `docker ps` | ✅ Evidencia 2 |
-| README con la documentación | ✅ `README.md` |
-| Cambios subidos a GitHub | ✅ https://github.com/SebasVelasquez/docker-semana3 |
+| Dos contenedores hechos con Docker | Prueba 1 y prueba 2 |
+| Que se comuniquen entre ellos | Pruebas 3 y 4 |
+| La receta del contenedor del programa | `api/Dockerfile`, explicado en el paso 2 |
+| El archivo que levanta los dos a la vez | `docker-compose.yml`, explicado en el paso 3 |
+| Que estén en la misma red y se llamen por su nombre | Sección 2 y prueba 4 |
+| Contraseñas en un archivo aparte, sin subirlas | Paso 4 |
+| Una función que guarde y consulte en la base de datos | Pruebas 3 y 4 |
+| Ejecutarlo de verdad | Prueba 1 |
+| Probarlo y corregir los errores que salgan | Pruebas 3 y 4, y el fallo de la sección 6 |
+| Documentación del proyecto | `README.md` |
+| Todo subido a GitHub | github.com/SebasVelasquez/docker-semana3 |
+
+---
+
+## Pequeño glosario
+
+Por si alguna palabra no quedó clara:
+
+| Palabra | Qué significa aquí |
+|---|---|
+| **Contenedor** | Una caja cerrada con un programa dentro y todo lo que necesita para funcionar |
+| **Imagen** | La plantilla a partir de la cual se crea una caja. Una imagen puede dar muchas cajas iguales |
+| **Docker** | El programa que crea y maneja esas cajas |
+| **Dockerfile** | La receta, paso a paso, para construir una caja |
+| **Docker Compose** | La herramienta que maneja varias cajas a la vez y las conecta |
+| **Puerto** | Un número que identifica por dónde entra o sale la información de un programa |
+| **PostgreSQL** | Un programa de base de datos, de los más usados |
+| **Flask** | Una herramienta de Python para hacer programas que responden por internet |
+| **Volumen** | Un espacio donde se guardan datos que no se borran aunque la caja desaparezca |

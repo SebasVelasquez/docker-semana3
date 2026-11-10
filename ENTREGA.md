@@ -3,7 +3,7 @@
 **Actividad:** usar Docker para construir dos contenedores que estén
 comunicados entre sí.
 
-**Integrantes del grupo:** Sebastián Velásquez
+**Integrantes del grupo:** Sebastián Velásquez y Roselis Isabel Contreras
 **Repositorio:** https://github.com/SebasVelasquez/docker-semana3
 **Fecha en que se hicieron las pruebas:** 10 de noviembre de 2026
 
